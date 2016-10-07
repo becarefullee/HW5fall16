@@ -32,10 +32,17 @@ Given /^I am on the RottenPotatoes home page$/ do
     expect(page).to have_content(text)
  end
 
+
+ Then /^(?:|I )should not see "([^"]*)"$/ do |text|
+    expect(page).to have_no_content(text)
+end
+
+    
+
  When /^I have edited the movie "(.*?)" to change the rating to "(.*?)"$/ do |movie, rating|
   click_on "Edit"
   select rating, :from => 'Rating'
-  click_button 'Update Movie Info'
+  click_button('Update Movie Info')
  end
 
 
@@ -45,9 +52,13 @@ Given /^I am on the RottenPotatoes home page$/ do
 
 # Add a declarative step here for populating the DB with movies.
 
+
 Given /the following movies have been added to RottenPotatoes:/ do |movies_table|
-  pending  # Remove this statement when you finish implementing the test step
   movies_table.hashes.each do |movie|
+   @title = movie[:title]
+   @rating = movie[:rating]
+   @release_date = movie[:release_date]
+   Movie.create(title:@title, rating:@rating, release_date:@release_date)
     # Each returned movie will be a hash representing one row of the movies_table
     # The keys will be the table headers and the values will be the row contents.
     # Entries can be directly to the database with ActiveRecord methods
@@ -59,16 +70,42 @@ When /^I have opted to see movies rated: "(.*?)"$/ do |arg1|
   # HINT: use String#split to split up the rating_list, then
   # iterate over the ratings and check/uncheck the ratings
   # using the appropriate Capybara command(s)
-  pending  #remove this statement after implementing the test step
+    all('input[type=checkbox]').each do |checkbox|
+    if checkbox.checked? then 
+        checkbox.set(false)
+    end
+    end
+    arg1.split(',').map{ |x| check("ratings_#{x.strip}")}
+    click_button 'Refresh'
 end
 
+
+
 Then /^I should see only movies rated: "(.*?)"$/ do |arg1|
-  pending  #remove this statement after implementing the test step
+    result = true
+    selected_ratings = arg1.split(',').map{ |x| x.strip }
+    ratings = []
+    page.find('table').all('tr').map { |row| row.all('th, td').map { |cell| cell.text.strip } }.each{|x| ratings.push(x[1])}
+    ratings.delete_at(0)
+    ratings.each{|x| if selected_ratings.include?(x) == false then resut = false; break end}
+    expect(result).to be_truthy
 end
 
 Then /^I should see all of the movies$/ do
-  pending  #remove this statement after implementing the test step
+    rows = page.all('table#movies tbody tr').length
+    rows.should eq Movie.count
+end
+
+Then /^I should see "(.*?)" before "(.*?)"$/ do |t1, t2|
+  expect(page.body).to match(/#{t1}.*#{t2}/m)
 end
 
 
+When /^I have choosed to sort movies alphabetically$/ do
+    click_on 'Movie Title'
+end
 
+
+When /^I have choosed to sort movies in increasing order of release data$/ do
+    click_on 'Release Date'
+end
